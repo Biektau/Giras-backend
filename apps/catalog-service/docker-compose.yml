@@ -1,0 +1,16 @@
+services:
+  postgres-catalog:
+    image: postgres:16
+    container_name: giras-postgres-catalog
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${CATALOG_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${CATALOG_POSTGRES_PASSWORD}
+      POSTGRES_DB: ${CATALOG_POSTGRES_DB}
+    ports:
+      - "${CATALOG_POSTGRES_PORT}:5432"
+    volumes:
+      - postgres_catalog_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_catalog_data:
