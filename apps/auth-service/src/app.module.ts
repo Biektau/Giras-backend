@@ -1,8 +1,7 @@
 import { Module } from '@nestjs/common';
-import { WorkwearModule } from './workwear/workwear.module';
 import { AuthModule } from './auth/auth.module';
 
 @Module({
-  imports: [WorkwearModule, AuthModule],
+  imports: [AuthModule],
 })
 export class AppModule {}

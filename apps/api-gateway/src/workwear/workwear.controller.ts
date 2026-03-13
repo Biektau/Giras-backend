@@ -1,9 +1,13 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, UseInterceptors, UploadedFiles, Inject, Query, Patch } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, UseInterceptors, UploadedFiles, Inject, Query, Patch, UseGuards } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { firstValueFrom } from 'rxjs';
 import { CreateWorkwearDto } from './dto/create-workwear.dto';
 import { UpdateWorkwearDto } from './dto/update-workwear.dto';
+import { JwtGuard } from '../auth/guards/jwt.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/roles.decorator';
+import { UserRole } from '../auth/user-role.enum';
 
 @Controller('workwear')
 export class WorkwearController {
@@ -23,6 +27,8 @@ export class WorkwearController {
     }
 
     @Post('create-one')
+    @UseGuards(JwtGuard, RolesGuard)
+    @Roles(UserRole.ADMIN)
     @UseInterceptors(FilesInterceptor('images', 10))
     async createOne(
         @Body() dto: CreateWorkwearDto,
@@ -60,6 +66,8 @@ export class WorkwearController {
     }
 
     @Post('copy-one/:id')
+    @UseGuards(JwtGuard, RolesGuard)
+    @Roles(UserRole.ADMIN)
     copyOne(@Param('id') id: string) {
         return firstValueFrom(
             this.catalogClient.send({ cmd: 'copy_workwear' }, id),
@@ -67,6 +75,8 @@ export class WorkwearController {
     }
 
     @Put('update-one/:id')
+    @UseGuards(JwtGuard, RolesGuard)
+    @Roles(UserRole.ADMIN)
     @UseInterceptors(FilesInterceptor('images', 10))
     async updateOne(
         @Param('id') id: string,
@@ -105,6 +115,8 @@ export class WorkwearController {
     }
 
     @Delete('delete-many')
+    @UseGuards(JwtGuard, RolesGuard)
+    @Roles(UserRole.ADMIN)
     async deleteMany(@Query('ids') ids: string) {
         const idsArray = ids.split(',');
 
@@ -128,6 +140,8 @@ export class WorkwearController {
     }
 
     @Patch('reorder')
+    @UseGuards(JwtGuard, RolesGuard)
+    @Roles(UserRole.ADMIN)
     reorder(@Body() items: { id: string; order: number }[]) {
         return firstValueFrom(
             this.catalogClient.send({ cmd: 'reorder_workwear' }, items),
@@ -135,6 +149,8 @@ export class WorkwearController {
     }
 
     @Delete('delete-one/:id')
+    @UseGuards(JwtGuard, RolesGuard)
+    @Roles(UserRole.ADMIN)
     async deleteOne(@Param('id') id: string) {
         const images = await firstValueFrom(
             this.catalogClient.send({ cmd: 'get_workwear_images' }, id),
