@@ -42,19 +42,10 @@ export class WorkwearController {
     deleteOne(@Payload() id: string) {
         return this.workwearService.deleteOne(id);
     }
-
-    @MessagePattern({ cmd: 'delete_many_workwear' })
-    deleteMany(@Payload() ids: string[]) {
-        return this.workwearService.deleteMany(ids);
-    }
-
+    
     @MessagePattern({ cmd: 'get_workwear_images' })
     getImages(@Payload() id: string) {
         return this.workwearService.getImages(id);
     }
-
-    @MessagePattern({ cmd: 'get_many_workwear_images' })
-    getManyImages(@Payload() ids: string[]) {
-        return this.workwearService.getManyImages(ids);
-    }
+    
 }

@@ -20,7 +20,8 @@ async function bootstrap() {
     }),
   );
   app.useGlobalFilters(new RpcExceptionFilter());
-  await app.listen(3000);
-  console.log('API Gateway running on port 3000');
+  const port = parseInt(process.env.PORT ?? '3000');
+  await app.listen(port);
+  console.log(`API Gateway running on port ${port}`);
 }
 bootstrap();

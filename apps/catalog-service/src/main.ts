@@ -7,11 +7,11 @@ async function bootstrap() {
     transport: Transport.TCP,
     options: {
       host: '0.0.0.0',
-      port: 3001,
+      port: parseInt(process.env.CATALOG_SERVICE_PORT ?? '3001'),
     },
   });
 
   await app.listen();
-  console.log('Catalog service listening on port 3001');
+  console.log(`Catalog service listening on port ${process.env.CATALOG_SERVICE_PORT ?? 3001}`);
 }
 bootstrap();

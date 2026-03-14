@@ -87,25 +87,10 @@ export class WorkwearService {
         const workwear = await this.getOne(id);
         await this.workwearRepository.remove(workwear);
         return { message: `Спецодежда с id ${id} удалена` };
-    }
-
-    async deleteMany(ids: string[]): Promise<{ message: string }> {
-        const workwears = await this.workwearRepository.find({
-            where: ids.map((id) => ({ id })),
-        });
-        await this.workwearRepository.remove(workwears);
-        return { message: `Удалено ${workwears.length} позиций` };
-    }
+    }    
 
     async getImages(id: string): Promise<string[]> {
         const workwear = await this.workwearRepository.findOne({ where: { id } });
         return workwear?.images ?? [];
-    }
-
-    async getManyImages(ids: string[]): Promise<string[]> {
-        const workwears = await this.workwearRepository.find({
-            where: ids.map((id) => ({ id })),
-        });
-        return workwears.flatMap((w) => w.images ?? []);
-    }
+    }   
 }

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, UseInterceptors, UploadedFiles, Inject, Query, Patch, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, UseInterceptors, UploadedFiles, Inject, Query, Patch, UseGuards, InternalServerErrorException } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { firstValueFrom } from 'rxjs';
@@ -6,7 +6,7 @@ import { CreateWorkwearDto } from './dto/create-workwear.dto';
 import { UpdateWorkwearDto } from './dto/update-workwear.dto';
 import { JwtGuard } from '../auth/guards/jwt.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/roles.decorator';
+import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '../auth/user-role.enum';
 
 @Controller('workwear')
@@ -112,31 +112,6 @@ export class WorkwearController {
             }
             throw error;
         }
-    }
-
-    @Delete('delete-many')
-    @UseGuards(JwtGuard, RolesGuard)
-    @Roles(UserRole.ADMIN)
-    async deleteMany(@Query('ids') ids: string) {
-        const idsArray = ids.split(',');
-
-        const images = await firstValueFrom(
-            this.catalogClient.send({ cmd: 'get_many_workwear_images' }, idsArray),
-        );
-
-        const result = await firstValueFrom(
-            this.catalogClient.send({ cmd: 'delete_many_workwear' }, idsArray),
-        );
-
-        if (images?.length > 0) {
-            await Promise.allSettled(
-                images.map((url: string) =>
-                    firstValueFrom(this.storageClient.send({ cmd: 'delete_file' }, url)),
-                ),
-            );
-        }
-
-        return result;
     }
 
     @Patch('reorder')

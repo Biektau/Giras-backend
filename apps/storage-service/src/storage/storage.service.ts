@@ -1,80 +1,93 @@
 import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { RpcException } from '@nestjs/microservices';
 import * as Minio from 'minio';
 import { v4 as uuidv4 } from 'uuid';
+
+type FilePayload = {
+  buffer: Buffer | { data: number[] };
+  originalname: string;
+  mimetype: string;
+  size: number;
+};
 
 @Injectable()
 export class StorageService implements OnModuleInit {
   private readonly logger = new Logger(StorageService.name);
   private readonly bucket = 'workwear';
+  private readonly endpoint: string;
+  private readonly port: string;
 
   constructor(
     @Inject('MINIO_CLIENT') private readonly minioClient: Minio.Client,
-  ) {}
+    private readonly configService: ConfigService,
+  ) {
+    this.endpoint = this.configService.get<string>('MINIO_ENDPOINT', 'localhost');
+    this.port = this.configService.get<string>('MINIO_PORT', '9000');
+  }
 
   async onModuleInit() {
     await this.ensureBucketExists();
   }
 
   private async ensureBucketExists() {
-    const exists = await this.minioClient.bucketExists(this.bucket);
-    if (!exists) {
-      await this.minioClient.makeBucket(this.bucket);
-      const policy = {
-        Version: '2012-10-17',
-        Statement: [
-          {
-            Effect: 'Allow',
-            Principal: { AWS: ['*'] },
-            Action: ['s3:GetObject'],
-            Resource: [`arn:aws:s3:::${this.bucket}/*`],
-          },
-        ],
-      };
-      await this.minioClient.setBucketPolicy(
-        this.bucket,
-        JSON.stringify(policy),
-      );
-      this.logger.log(`Бакет "${this.bucket}" создан`);
+    try {
+      const exists = await this.minioClient.bucketExists(this.bucket);
+      if (!exists) {
+        await this.minioClient.makeBucket(this.bucket);
+        const policy = {
+          Version: '2012-10-17',
+          Statement: [
+            {
+              Effect: 'Allow',
+              Principal: { AWS: ['*'] },
+              Action: ['s3:GetObject'],
+              Resource: [`arn:aws:s3:::${this.bucket}/*`],
+            },
+          ],
+        };
+        await this.minioClient.setBucketPolicy(this.bucket, JSON.stringify(policy));
+        this.logger.log(`Бакет "${this.bucket}" создан`);
+      }
+    } catch (error) {
+      this.logger.error('Ошибка при создании бакета', error);
+      throw error;
     }
   }
 
-  async uploadFile(file: {
-    buffer: any;
-    originalname: string;
-    mimetype: string;
-    size: number;
-  }): Promise<string> {
-    const ext = file.originalname.split('.').pop();
-    const filename = `${uuidv4()}.${ext}`;
+  async uploadFile(file: FilePayload): Promise<string> {
+    try {
+      const ext = file.originalname.split('.').pop();
+      const filename = `${uuidv4()}.${ext}`;
 
-    const buffer = Buffer.isBuffer(file.buffer)
-      ? file.buffer
-      : Buffer.from(file.buffer.data ?? file.buffer);
+      const buffer = Buffer.isBuffer(file.buffer)
+        ? file.buffer
+        : Buffer.from((file.buffer as { data: number[] }).data);
 
-    await this.minioClient.putObject(this.bucket, filename, buffer, file.size, {
-      'Content-Type': file.mimetype,
-    });
+      await this.minioClient.putObject(this.bucket, filename, buffer, file.size, {
+        'Content-Type': file.mimetype,
+      });
 
-    const endpoint = process.env.MINIO_ENDPOINT ?? 'localhost';
-    const port = process.env.MINIO_PORT ?? '9000';
-    return `http://${endpoint}:${port}/${this.bucket}/${filename}`;
+      return `http://${this.endpoint}:${this.port}/${this.bucket}/${filename}`;
+    } catch (error) {
+      this.logger.error('Ошибка при загрузке файла', error);
+      throw new RpcException({ statusCode: 500, message: 'Ошибка при загрузке файла' });
+    }
   }
 
-  async uploadFiles(
-    files: {
-      buffer: Buffer;
-      originalname: string;
-      mimetype: string;
-      size: number;
-    }[],
-  ): Promise<string[]> {
+  async uploadFiles(files: FilePayload[]): Promise<string[]> {
     return Promise.all(files.map((file) => this.uploadFile(file)));
   }
 
   async deleteFile(url: string): Promise<void> {
-    const filename = url.split('/').pop();
-    if (filename) {
-      await this.minioClient.removeObject(this.bucket, filename);
+    try {
+      const filename = url.split('/').pop();
+      if (filename) {
+        await this.minioClient.removeObject(this.bucket, filename);
+      }
+    } catch (error) {
+      this.logger.error('Ошибка при удалении файла', error);
+      throw new RpcException({ statusCode: 500, message: 'Ошибка при удалении файла' });
     }
   }
 }

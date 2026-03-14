@@ -1,10 +1,12 @@
-import { Controller, Post, Body, Res, Req } from '@nestjs/common';
-import { ClientProxy } from '@nestjs/microservices';
+import { Controller, Post, Body, Res, Req, Get, UseGuards, InternalServerErrorException } from '@nestjs/common';
 import { Inject } from '@nestjs/common';
+import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
+import { Request, Response } from 'express';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
-import { Request, Response } from 'express';
+import { JwtGuard } from './guards/jwt.guard';
+import { CurrentUser } from './decorators/current-user.decorator';
 
 @Controller('auth')
 export class AuthController {
@@ -12,19 +14,18 @@ export class AuthController {
     @Inject('AUTH_SERVICE') private readonly authClient: ClientProxy,
   ) {}
 
+  @Get('me')
+  @UseGuards(JwtGuard)
+  getMe(@CurrentUser() user: { id: string; role: string }) {
+    return user;
+  }
+
   @Post('register')
   async register(@Body() dto: RegisterDto, @Res() res: Response) {
     const tokens = await firstValueFrom(
       this.authClient.send({ cmd: 'register' }, dto),
     );
-
-    res.cookie('refreshToken', tokens.refreshToken, {
-      httpOnly: true,
-      secure: false,
-      sameSite: 'lax',
-      maxAge: 30 * 24 * 60 * 60 * 1000,
-    });
-
+    this.setRefreshCookie(res, tokens.refreshToken);
     return res.json({ accessToken: tokens.accessToken });
   }
 
@@ -33,14 +34,7 @@ export class AuthController {
     const tokens = await firstValueFrom(
       this.authClient.send({ cmd: 'login' }, dto),
     );
-
-    res.cookie('refreshToken', tokens.refreshToken, {
-      httpOnly: true,
-      secure: false,
-      sameSite: 'lax',
-      maxAge: 30 * 24 * 60 * 60 * 1000,
-    });
-
+    this.setRefreshCookie(res, tokens.refreshToken);
     return res.json({ accessToken: tokens.accessToken });
   }
 
@@ -55,14 +49,7 @@ export class AuthController {
     const tokens = await firstValueFrom(
       this.authClient.send({ cmd: 'refresh' }, refreshToken),
     );
-
-    res.cookie('refreshToken', tokens.refreshToken, {
-      httpOnly: true,
-      secure: false,
-      sameSite: 'lax',
-      maxAge: 30 * 24 * 60 * 60 * 1000,
-    });
-
+    this.setRefreshCookie(res, tokens.refreshToken);
     return res.json({ accessToken: tokens.accessToken });
   }
 
@@ -78,5 +65,14 @@ export class AuthController {
 
     res.clearCookie('refreshToken');
     return res.json({ message: 'Выход выполнен успешно' });
+  }
+
+  private setRefreshCookie(res: Response, token: string) {
+    res.cookie('refreshToken', token, {
+      httpOnly: true,
+      secure: false,
+      sameSite: 'lax',
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+    });
   }
 }

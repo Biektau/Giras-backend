@@ -2,15 +2,25 @@ import { Catch, ArgumentsHost, ExceptionFilter, HttpStatus } from '@nestjs/commo
 import { RpcException } from '@nestjs/microservices';
 import { Response } from 'express';
 
+interface RpcError {
+  statusCode?: number;
+  message?: string;
+}
+
 @Catch(RpcException)
 export class RpcExceptionFilter implements ExceptionFilter {
   catch(exception: RpcException, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
-    const error = exception.getError() as any;
+    const error = exception.getError() as RpcError | string;
 
-    const statusCode = error?.statusCode ?? HttpStatus.INTERNAL_SERVER_ERROR;
-    const message = error?.message ?? 'Internal server error';
+    const statusCode = typeof error === 'object'
+      ? (error.statusCode ?? HttpStatus.INTERNAL_SERVER_ERROR)
+      : HttpStatus.INTERNAL_SERVER_ERROR;
+
+    const message = typeof error === 'object'
+      ? (error.message ?? 'Internal server error')
+      : error;
 
     response.status(statusCode).json({
       statusCode,
