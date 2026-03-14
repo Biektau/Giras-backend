@@ -1,4 +1,4 @@
-import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
+import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { RpcException } from '@nestjs/microservices';
 import { ConfigService } from '@nestjs/config';
@@ -10,11 +10,18 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { UserRole } from './user-role.enum';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { StringValue } from 'ms';
 
 @Injectable()
 export class AuthService implements OnModuleInit {
+  private readonly logger = new Logger(AuthService.name);
   private readonly userRepository: Repository<User>;
   private readonly refreshTokenRepository: Repository<RefreshToken>;
+  private readonly accessSecret: string;
+  private readonly refreshSecret: string;
+private readonly accessExpiresIn: StringValue;
+private readonly refreshExpiresIn: StringValue;
+  private readonly refreshExpiresDays: number;
 
   constructor(
     @Inject('DATA_SOURCE') private readonly dataSource: DataSource,
@@ -23,6 +30,11 @@ export class AuthService implements OnModuleInit {
   ) {
     this.userRepository = this.dataSource.getRepository(User);
     this.refreshTokenRepository = this.dataSource.getRepository(RefreshToken);
+    this.accessSecret = this.configService.get<string>('JWT_ACCESS_SECRET', 'access_secret');
+    this.refreshSecret = this.configService.get<string>('JWT_REFRESH_SECRET', 'refresh_secret');
+    this.accessExpiresIn = this.configService.get<string>('JWT_ACCESS_EXPIRES_IN', '15m') as StringValue;
+this.refreshExpiresIn = this.configService.get<string>('JWT_REFRESH_EXPIRES_IN', '30d') as StringValue;
+    this.refreshExpiresDays = this.configService.get<number>('JWT_REFRESH_EXPIRES_DAYS', 30);
   }
 
   async onModuleInit() {
@@ -35,9 +47,7 @@ export class AuthService implements OnModuleInit {
     const adminName = this.configService.get<string>('ADMIN_NAME', 'Admin');
 
     if (!adminEmail || !adminPassword) {
-      console.warn(
-        'ADMIN_EMAIL или ADMIN_PASSWORD не заданы в .env — админ не создан',
-      );
+      this.logger.warn('ADMIN_EMAIL или ADMIN_PASSWORD не заданы в .env — админ не создан');
       return;
     }
 
@@ -46,7 +56,7 @@ export class AuthService implements OnModuleInit {
     });
 
     if (existing) {
-      console.log('Админ уже существует');
+      this.logger.log('Админ уже существует');
       return;
     }
 
@@ -60,20 +70,13 @@ export class AuthService implements OnModuleInit {
     });
 
     await this.userRepository.save(admin);
-    console.log('Админ создан успешно');
+    this.logger.log('Админ создан успешно');
   }
 
-  async register(
-    dto: RegisterDto,
-  ): Promise<{ accessToken: string; refreshToken: string }> {
-    const existing = await this.userRepository.findOne({
-      where: { email: dto.email },
-    });
+  async register(dto: RegisterDto): Promise<{ accessToken: string; refreshToken: string }> {
+    const existing = await this.userRepository.findOne({ where: { email: dto.email } });
     if (existing) {
-      throw new RpcException({
-        statusCode: 409,
-        message: 'Пользователь с таким email уже существует',
-      });
+      throw new RpcException({ statusCode: 409, message: 'Пользователь с таким email уже существует' });
     }
 
     const hashedPassword = await bcrypt.hash(dto.password, 10);
@@ -88,51 +91,33 @@ export class AuthService implements OnModuleInit {
     return this.generateTokens(user);
   }
 
-  async login(
-    dto: LoginDto,
-  ): Promise<{ accessToken: string; refreshToken: string }> {
-    const user = await this.userRepository.findOne({
-      where: { email: dto.email },
-    });
+  async login(dto: LoginDto): Promise<{ accessToken: string; refreshToken: string }> {
+    const user = await this.userRepository.findOne({ where: { email: dto.email } });
     if (!user) {
-      throw new RpcException({
-        statusCode: 401,
-        message: 'Неверный email или пароль',
-      });
+      throw new RpcException({ statusCode: 401, message: 'Неверный email или пароль' });
     }
 
     const isPasswordValid = await bcrypt.compare(dto.password, user.password);
     if (!isPasswordValid) {
-      throw new RpcException({
-        statusCode: 401,
-        message: 'Неверный email или пароль',
-      });
+      throw new RpcException({ statusCode: 401, message: 'Неверный email или пароль' });
     }
 
     return this.generateTokens(user);
   }
 
-  async refresh(
-    token: string,
-  ): Promise<{ accessToken: string; refreshToken: string }> {
+  async refresh(token: string): Promise<{ accessToken: string; refreshToken: string }> {
     const refreshToken = await this.refreshTokenRepository.findOne({
       where: { token },
       relations: ['user'],
     });
 
     if (!refreshToken) {
-      throw new RpcException({
-        statusCode: 401,
-        message: 'Refresh token не найден',
-      });
+      throw new RpcException({ statusCode: 401, message: 'Refresh token не найден' });
     }
 
     if (refreshToken.expiresAt < new Date()) {
       await this.refreshTokenRepository.remove(refreshToken);
-      throw new RpcException({
-        statusCode: 401,
-        message: 'Refresh token истёк',
-      });
+      throw new RpcException({ statusCode: 401, message: 'Refresh token истёк' });
     }
 
     await this.refreshTokenRepository.remove(refreshToken);
@@ -140,21 +125,17 @@ export class AuthService implements OnModuleInit {
   }
 
   async logout(token: string): Promise<{ message: string }> {
-    const refreshToken = await this.refreshTokenRepository.findOne({
-      where: { token },
-    });
+    const refreshToken = await this.refreshTokenRepository.findOne({ where: { token } });
     if (refreshToken) {
       await this.refreshTokenRepository.remove(refreshToken);
     }
     return { message: 'Выход выполнен успешно' };
   }
 
-  async validateToken(
-    accessToken: string,
-  ): Promise<{ id: string; role: UserRole }> {
+  async validateToken(accessToken: string): Promise<{ id: string; role: UserRole }> {
     try {
       const payload = this.jwtService.verify(accessToken, {
-        secret: this.configService.get<string>('JWT_ACCESS_SECRET'),
+        secret: this.accessSecret,
       });
       return { id: payload.sub, role: payload.role };
     } catch {
@@ -162,27 +143,19 @@ export class AuthService implements OnModuleInit {
     }
   }
 
-  private async generateTokens(
-    user: User,
-  ): Promise<{ accessToken: string; refreshToken: string }> {
+  private async generateTokens(user: User): Promise<{ accessToken: string; refreshToken: string }> {
     const accessToken = this.jwtService.sign(
       { sub: user.id, role: user.role },
-      {
-        secret: this.configService.get<string>('JWT_ACCESS_SECRET'),
-        expiresIn: '15m',
-      },
+      { secret: this.accessSecret, expiresIn: this.accessExpiresIn },
     );
 
     const refreshTokenValue = this.jwtService.sign(
       { sub: user.id },
-      {
-        secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
-        expiresIn: '30d',
-      },
+      { secret: this.refreshSecret, expiresIn: this.refreshExpiresIn },
     );
 
     const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 30);
+    expiresAt.setDate(expiresAt.getDate() + this.refreshExpiresDays);
 
     const refreshToken = this.refreshTokenRepository.create({
       token: refreshTokenValue,
@@ -191,7 +164,6 @@ export class AuthService implements OnModuleInit {
     });
 
     await this.refreshTokenRepository.save(refreshToken);
-
     return { accessToken, refreshToken: refreshTokenValue };
   }
 
@@ -203,6 +175,6 @@ export class AuthService implements OnModuleInit {
       .where('expiresAt < :now', { now: new Date() })
       .execute();
 
-    console.log(`Удалено истёкших токенов: ${result.affected}`);
+    this.logger.log(`Удалено истёкших токенов: ${result.affected}`);
   }
 }

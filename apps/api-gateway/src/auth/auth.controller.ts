@@ -1,6 +1,7 @@
-import { Controller, Post, Body, Res, Req, Get, UseGuards, InternalServerErrorException } from '@nestjs/common';
+import { Controller, Post, Body, Res, Req, Get, UseGuards } from '@nestjs/common';
 import { Inject } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
+import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
 import { Request, Response } from 'express';
 import { RegisterDto } from './dto/register.dto';
@@ -10,9 +11,14 @@ import { CurrentUser } from './decorators/current-user.decorator';
 
 @Controller('auth')
 export class AuthController {
+  private readonly refreshExpiresDays: number;
+
   constructor(
     @Inject('AUTH_SERVICE') private readonly authClient: ClientProxy,
-  ) {}
+    private readonly configService: ConfigService,
+  ) {
+    this.refreshExpiresDays = this.configService.get<number>('JWT_REFRESH_EXPIRES_DAYS', 30);
+  }
 
   @Get('me')
   @UseGuards(JwtGuard)
@@ -72,7 +78,7 @@ export class AuthController {
       httpOnly: true,
       secure: false,
       sameSite: 'lax',
-      maxAge: 30 * 24 * 60 * 60 * 1000,
+      maxAge: this.refreshExpiresDays * 24 * 60 * 60 * 1000,
     });
   }
 }
