@@ -6,7 +6,12 @@ import { LoginDto } from './dto/login.dto';
 
 @Controller()
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(private readonly authService: AuthService) { }
+
+  @MessagePattern({ cmd: 'get_me' })
+  getMe(@Payload() id: string) {
+    return this.authService.getMe(id);
+  }
 
   @MessagePattern({ cmd: 'register' })
   register(@Payload() dto: RegisterDto) {

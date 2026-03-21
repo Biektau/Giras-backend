@@ -19,8 +19,8 @@ export class AuthService implements OnModuleInit {
   private readonly refreshTokenRepository: Repository<RefreshToken>;
   private readonly accessSecret: string;
   private readonly refreshSecret: string;
-private readonly accessExpiresIn: StringValue;
-private readonly refreshExpiresIn: StringValue;
+  private readonly accessExpiresIn: StringValue;
+  private readonly refreshExpiresIn: StringValue;
   private readonly refreshExpiresDays: number;
 
   constructor(
@@ -33,7 +33,7 @@ private readonly refreshExpiresIn: StringValue;
     this.accessSecret = this.configService.get<string>('JWT_ACCESS_SECRET', 'access_secret');
     this.refreshSecret = this.configService.get<string>('JWT_REFRESH_SECRET', 'refresh_secret');
     this.accessExpiresIn = this.configService.get<string>('JWT_ACCESS_EXPIRES_IN', '15m') as StringValue;
-this.refreshExpiresIn = this.configService.get<string>('JWT_REFRESH_EXPIRES_IN', '30d') as StringValue;
+    this.refreshExpiresIn = this.configService.get<string>('JWT_REFRESH_EXPIRES_IN', '30d') as StringValue;
     this.refreshExpiresDays = this.configService.get<number>('JWT_REFRESH_EXPIRES_DAYS', 30);
   }
 
@@ -71,6 +71,17 @@ this.refreshExpiresIn = this.configService.get<string>('JWT_REFRESH_EXPIRES_IN',
 
     await this.userRepository.save(admin);
     this.logger.log('Админ создан успешно');
+  }
+
+  async getMe(id: string): Promise<Omit<User, 'password'>> {
+    const user = await this.userRepository.findOne({ where: { id } });
+
+    if (!user) {
+      throw new RpcException({ statusCode: 404, message: 'Пользователь не найден' });
+    }
+
+    const { password, ...result } = user;
+    return result;
   }
 
   async register(dto: RegisterDto): Promise<{ accessToken: string; refreshToken: string }> {

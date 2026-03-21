@@ -2,7 +2,7 @@ import { IsArray, IsBoolean, IsEnum, IsNumber, IsOptional, IsString, Length, Mat
 import { WorkwearSize } from '../enums/size.enum';
 import { WorkwearSeason } from '../enums/season.enum';
 import { WorkwearItemSet } from '../enums/set.enum';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 
 export class UpdateWorkwearDto {
   @IsOptional()
@@ -14,6 +14,7 @@ export class UpdateWorkwearDto {
   @IsString({ message: 'Описание должно быть строкой' })
   description?: string;
 
+  @Transform(({ value }) => Array.isArray(value) ? value : [value])
   @IsOptional()
   @IsArray({ message: 'Размеры должны быть в массиве' })
   @IsEnum(WorkwearSize, { each: true, message: `Размер должен быть одним из: ${Object.values(WorkwearSize).join(', ')}` })

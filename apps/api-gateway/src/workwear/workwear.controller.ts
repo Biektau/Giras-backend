@@ -68,10 +68,26 @@ export class WorkwearController {
     @Post('copy-one/:id')
     @UseGuards(JwtGuard, RolesGuard)
     @Roles(UserRole.ADMIN)
-    copyOne(@Param('id') id: string) {
-        return firstValueFrom(
+    async copyOne(@Param('id') id: string) {
+        const copied = await firstValueFrom(
             this.catalogClient.send({ cmd: 'copy_workwear' }, id),
         );
+
+        if (copied.images?.length > 0) {
+            const newImageUrls = await firstValueFrom(
+                this.storageClient.send({ cmd: 'copy_files' }, copied.images),
+            );
+
+            return firstValueFrom(
+                this.catalogClient.send({ cmd: 'update_workwear' }, {
+                    id: copied.id,
+                    dto: {},
+                    imageUrls: newImageUrls,
+                }),
+            );
+        }
+
+        return copied;
     }
 
     @Put('update-one/:id')

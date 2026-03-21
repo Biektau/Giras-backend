@@ -90,4 +90,31 @@ export class StorageService implements OnModuleInit {
       throw new RpcException({ statusCode: 500, message: 'Ошибка при удалении файла' });
     }
   }
+
+  async copyFiles(urls: string[]): Promise<string[]> {
+  const newUrls: string[] = [];
+
+  for (const url of urls) {
+    try {
+      const filename = url.split('/').pop();
+      if (!filename) continue;
+
+      const ext = filename.split('.').pop();
+      const newFilename = `${uuidv4()}.${ext}`;
+
+      await this.minioClient.copyObject(
+        this.bucket,
+        newFilename,
+        `/${this.bucket}/${filename}`,
+      );
+
+      newUrls.push(`http://${this.endpoint}:${this.port}/${this.bucket}/${newFilename}`);
+    } catch (error) {
+      this.logger.error('Ошибка при копировании файла', error);
+      throw new RpcException({ statusCode: 500, message: 'Ошибка при копировании файла' });
+    }
+  }
+
+  return newUrls;
+}
 }

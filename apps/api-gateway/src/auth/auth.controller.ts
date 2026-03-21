@@ -22,8 +22,10 @@ export class AuthController {
 
   @Get('me')
   @UseGuards(JwtGuard)
-  getMe(@CurrentUser() user: { id: string; role: string }) {
-    return user;
+  async getMe(@CurrentUser() user: { id: string; role: string }) {
+    return firstValueFrom(
+      this.authClient.send({ cmd: 'get_me' }, user.id),
+    );
   }
 
   @Post('register')

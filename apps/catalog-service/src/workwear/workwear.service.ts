@@ -51,6 +51,8 @@ export class WorkwearService {
     async copyOne(id: string): Promise<Workwear> {
         const { id: _, createdAt, updatedAt, ...data } = await this.getOne(id);
         const copy = this.workwearRepository.create(data);
+        console.log(copy);
+        
         return this.workwearRepository.save(copy);
     }
 
