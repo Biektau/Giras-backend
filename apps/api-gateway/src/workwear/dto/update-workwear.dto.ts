@@ -42,7 +42,7 @@ export class UpdateWorkwearDto {
   @IsOptional()
   @IsString({ message: 'Артикул должен быть строкой' })
   @Length(1, 50, { message: 'Артикул должен содержать от 1 до 50 символов' })
-  @Matches(/^[A-Za-z0-9-_]+$/, { message: 'Артикул может содержать только буквы, цифры, дефисы и подчеркивания' })
+  @Matches(/^[\p{L}0-9_-]+$/u, { message: 'Артикул: буквы (в т.ч. кириллица), цифры, дефис и подчёркивание' })
   sku?: string;
 
   @IsOptional()
