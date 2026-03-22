@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { RpcException } from '@nestjs/microservices';
 import { DataSource, Repository } from 'typeorm';
 import { CreateWorkwearDto } from './dto/create-workwear.dto';
@@ -7,6 +7,7 @@ import { Workwear } from './workwear.entity';
 
 @Injectable()
 export class WorkwearService {
+    private readonly logger = new Logger(WorkwearService.name);
     private readonly workwearRepository: Repository<Workwear>;
 
     constructor(@Inject('DATA_SOURCE') private readonly dataSource: DataSource) {
@@ -41,6 +42,7 @@ export class WorkwearService {
             });
             return await this.workwearRepository.save(workwear);
         } catch (error) {
+            this.logger.error('Ошибка при создании спецодежды', error);
             throw new RpcException({
                 statusCode: 500,
                 message: 'Ошибка при создании спецодежды',
@@ -51,8 +53,6 @@ export class WorkwearService {
     async copyOne(id: string): Promise<Workwear> {
         const { id: _, createdAt, updatedAt, ...data } = await this.getOne(id);
         const copy = this.workwearRepository.create(data);
-        console.log(copy);
-        
         return this.workwearRepository.save(copy);
     }
 
@@ -70,6 +70,7 @@ export class WorkwearService {
             }
             return await this.workwearRepository.save(workwear);
         } catch (error) {
+            this.logger.error('Ошибка при обновлении спецодежды', error);
             throw new RpcException({
                 statusCode: 500,
                 message: 'Ошибка при обновлении спецодежды',

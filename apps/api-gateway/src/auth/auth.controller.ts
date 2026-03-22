@@ -51,7 +51,10 @@ export class AuthController {
     const refreshToken = req.cookies?.refreshToken;
 
     if (!refreshToken) {
-      return res.status(401).json({ message: 'Refresh token не найден' });
+      return res.status(401).json({
+        statusCode: 401,
+        message: 'Refresh token не найден',
+      });
     }
 
     const tokens = await firstValueFrom(
