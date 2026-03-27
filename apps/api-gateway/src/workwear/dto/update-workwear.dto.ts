@@ -53,4 +53,10 @@ export class UpdateWorkwearDto {
   @IsString({ message: 'Материал должен быть строкой' })
   @Length(1, 100, { message: 'Материал должен содержать от 1 до 100 символов' })
   material?: string;
+
+  @Transform(({ value }) => Array.isArray(value) ? value : value ? [value] : [])
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  existingImages?: string[];
 }

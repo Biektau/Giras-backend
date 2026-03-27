@@ -1,6 +1,7 @@
 import { DataSource } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { Workwear } from 'src/workwear/workwear.entity';
+import { OutboxEvent } from 'src/outbox/outbox-event.entity';
 
 export const databaseProviders = [
   {
@@ -16,7 +17,7 @@ export const databaseProviders = [
         database: configService.get<string>('CATALOG_POSTGRES_DB', 'catalog_db'),
         synchronize: configService.get<boolean>('CATALOG_POSTGRES_SYNCHRONIZE', true),
         logging: configService.get<boolean>('CATALOG_POSTGRES_LOGGING', false),
-        entities: [Workwear],
+        entities: [Workwear, OutboxEvent],
       });
 
       try {

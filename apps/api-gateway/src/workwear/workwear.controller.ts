@@ -99,7 +99,8 @@ export class WorkwearController {
         @Body() dto: UpdateWorkwearDto,
         @UploadedFiles() files: Express.Multer.File[],
     ) {
-        let imageUrls: string[] | undefined;
+        const { existingImages = [], ...restDto } = dto;
+        let newImageUrls: string[] = [];
 
         if (files?.length > 0) {
             const serializedFiles = files.map((file) => ({
@@ -109,19 +110,21 @@ export class WorkwearController {
                 size: file.size,
             }));
 
-            imageUrls = await firstValueFrom(
+            newImageUrls = await firstValueFrom(
                 this.storageClient.send({ cmd: 'upload_files' }, serializedFiles),
             );
         }
 
+        const imageUrls = [...existingImages, ...newImageUrls];
+
         try {
             return await firstValueFrom(
-                this.catalogClient.send({ cmd: 'update_workwear' }, { id, dto, imageUrls }),
+                this.catalogClient.send({ cmd: 'update_workwear' }, { id, dto: restDto, imageUrls }),
             );
         } catch (error) {
-            if (imageUrls && imageUrls.length > 0) {
+            if (newImageUrls.length > 0) {
                 await Promise.allSettled(
-                    imageUrls.map((url) =>
+                    newImageUrls.map((url) =>
                         firstValueFrom(this.storageClient.send({ cmd: 'delete_file' }, url)),
                     ),
                 );
@@ -142,23 +145,9 @@ export class WorkwearController {
     @Delete('delete-one/:id')
     @UseGuards(JwtGuard, RolesGuard)
     @Roles(UserRole.ADMIN)
-    async deleteOne(@Param('id') id: string) {
-        const images = await firstValueFrom(
-            this.catalogClient.send({ cmd: 'get_workwear_images' }, id),
-        );
-
-        const result = await firstValueFrom(
+    deleteOne(@Param('id') id: string) {
+        return firstValueFrom(
             this.catalogClient.send({ cmd: 'delete_workwear' }, id),
         );
-
-        if (images?.length > 0) {
-            await Promise.allSettled(
-                images.map((url: string) =>
-                    firstValueFrom(this.storageClient.send({ cmd: 'delete_file' }, url)),
-                ),
-            );
-        }
-
-        return result;
     }
 }
