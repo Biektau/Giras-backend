@@ -52,8 +52,8 @@ export class WorkwearController {
     }
 
     @MessagePattern({ cmd: 'copy_workwear' })
-    copyOne(@Payload() id: string) {
-        return this.commandBus.execute(new CopyWorkwearCommand(id));
+    copyOne(@Payload() payload: { id: string; imageUrls: string[] }) {
+        return this.commandBus.execute(new CopyWorkwearCommand(payload.id, payload.imageUrls));
     }
 
     @MessagePattern({ cmd: 'reorder_workwear' })
