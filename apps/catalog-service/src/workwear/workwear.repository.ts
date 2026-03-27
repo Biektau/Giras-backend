@@ -29,8 +29,9 @@ export class WorkwearRepository {
         return workwear;
     }
 
-    create(dto: CreateWorkwearDto, imageUrls: string[]): Promise<Workwear> {
-        const entity = this.repo.create({ ...dto, images: imageUrls });
+    async create(dto: CreateWorkwearDto, imageUrls: string[]): Promise<Workwear> {
+        const maxOrder = await this.repo.maximum('order') ?? -1;
+        const entity = this.repo.create({ ...dto, images: imageUrls, order: maxOrder + 1 });
         return this.repo.save(entity);
     }
 

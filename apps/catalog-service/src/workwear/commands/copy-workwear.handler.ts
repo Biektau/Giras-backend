@@ -8,7 +8,7 @@ export class CopyWorkwearHandler implements ICommandHandler<CopyWorkwearCommand,
     constructor(private readonly repo: WorkwearRepository) {}
 
     async execute(command: CopyWorkwearCommand): Promise<Workwear> {
-        const { id: _, createdAt, updatedAt, images: _images, ...data } = await this.repo.findById(command.id);
+        const { id: _, createdAt, updatedAt, images: _images, order: _order, ...data } = await this.repo.findById(command.id);
         return this.repo.create(data, command.imageUrls);
     }
 }

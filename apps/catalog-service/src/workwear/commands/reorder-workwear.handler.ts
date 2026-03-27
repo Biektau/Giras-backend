@@ -3,10 +3,11 @@ import { ReorderWorkwearCommand } from './reorder-workwear.command';
 import { WorkwearRepository } from '../workwear.repository';
 
 @CommandHandler(ReorderWorkwearCommand)
-export class ReorderWorkwearHandler implements ICommandHandler<ReorderWorkwearCommand, void> {
+export class ReorderWorkwearHandler implements ICommandHandler<ReorderWorkwearCommand, { success: true }> {
     constructor(private readonly repo: WorkwearRepository) {}
 
-    execute(command: ReorderWorkwearCommand): Promise<void> {
-        return this.repo.reorder(command.items);
+    async execute(command: ReorderWorkwearCommand): Promise<{ success: true }> {
+        await this.repo.reorder(command.items);
+        return { success: true };
     }
 }
