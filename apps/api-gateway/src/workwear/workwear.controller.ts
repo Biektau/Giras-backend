@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, UseInterceptors, UploadedFiles, Inject, Query, Patch, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, UseInterceptors, UploadedFiles, Inject, Patch, UseGuards } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { firstValueFrom } from 'rxjs';
@@ -17,13 +17,13 @@ export class WorkwearController {
     ) { }
 
     @Get('get-all')
-    getAll() {
-        return this.catalogClient.send({ cmd: 'get_all_workwear' }, {});
+    async getAll() {
+        return firstValueFrom(this.catalogClient.send({ cmd: 'get_all_workwear' }, {}));
     }
 
     @Get('get-one/:id')
-    getOne(@Param('id') id: string) {
-        return this.catalogClient.send({ cmd: 'get_one_workwear' }, id);
+    async getOne(@Param('id') id: string) {
+        return firstValueFrom(this.catalogClient.send({ cmd: 'get_one_workwear' }, id));
     }
 
     @Post('create-one')
@@ -77,7 +77,7 @@ export class WorkwearController {
             ? await firstValueFrom(this.storageClient.send({ cmd: 'copy_files' }, originalImages))
             : [];
 
-        return firstValueFrom(
+        return await firstValueFrom(
             this.catalogClient.send({ cmd: 'copy_workwear' }, { id, imageUrls }),
         );
     }
@@ -128,18 +128,14 @@ export class WorkwearController {
     @Patch('reorder')
     @UseGuards(JwtGuard, RolesGuard)
     @Roles(UserRole.ADMIN)
-    reorder(@Body() items: { id: string; order: number }[]) {
-        return firstValueFrom(
-            this.catalogClient.send({ cmd: 'reorder_workwear' }, items),
-        );
+    async reorder(@Body() items: { id: string; order: number }[]) {
+        return firstValueFrom(this.catalogClient.send({ cmd: 'reorder_workwear' }, items));
     }
 
     @Delete('delete-one/:id')
     @UseGuards(JwtGuard, RolesGuard)
     @Roles(UserRole.ADMIN)
-    deleteOne(@Param('id') id: string) {
-        return firstValueFrom(
-            this.catalogClient.send({ cmd: 'delete_workwear' }, id),
-        );
+    async deleteOne(@Param('id') id: string) {
+        return firstValueFrom(this.catalogClient.send({ cmd: 'delete_workwear' }, id));
     }
 }

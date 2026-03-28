@@ -1,36 +1,41 @@
-import {
-    Inject,
-    Injectable,
-    Logger,
-    OnApplicationBootstrap,
-    OnApplicationShutdown,
-} from '@nestjs/common';
+import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Cron } from '@nestjs/schedule';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
 import { OutboxRepository } from './outbox.repository';
 import { OutboxEvent } from './outbox-event.entity';
 
-const POLL_INTERVAL_MS = 5_000;
+/** Every 5 seconds (node-cron: second minute hour day month weekday). */
+const OUTBOX_CRON = '*/5 * * * * *';
 
 @Injectable()
-export class OutboxWorker implements OnApplicationBootstrap, OnApplicationShutdown {
+export class OutboxWorker implements OnModuleInit {
     private readonly logger = new Logger(OutboxWorker.name);
-    private intervalId: NodeJS.Timeout | null = null;
+    private processing = false;
 
     constructor(
         private readonly outboxRepo: OutboxRepository,
         @Inject('STORAGE_SERVICE') private readonly storageClient: ClientProxy,
     ) {}
 
-    onApplicationBootstrap() {
-        this.intervalId = setInterval(() => this.processEvents(), POLL_INTERVAL_MS);
-        this.logger.log(`OutboxWorker started — polling every ${POLL_INTERVAL_MS}ms`);
+    onModuleInit() {
+        this.logger.log(`OutboxWorker scheduled — ${OUTBOX_CRON}`);
     }
 
-    onApplicationShutdown() {
-        if (this.intervalId) {
-            clearInterval(this.intervalId);
-            this.logger.log('OutboxWorker stopped');
+    @Cron(OUTBOX_CRON)
+    async flushOutbox(): Promise<void> {
+        if (this.processing) {
+            this.logger.debug('Outbox tick skipped: previous batch still running');
+            return;
+        }
+        this.processing = true;
+        try {
+            await this.processEvents();
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            this.logger.error(`Outbox poll failed: ${message}`);
+        } finally {
+            this.processing = false;
         }
     }
 
