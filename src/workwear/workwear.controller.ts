@@ -1,4 +1,17 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, UseInterceptors, UploadedFiles, Patch, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+  Query,
+  UseInterceptors,
+  UploadedFiles,
+  Patch,
+  UseGuards,
+} from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { CreateWorkwearDto } from './dto/create-workwear.dto';
 import { UpdateWorkwearDto } from './dto/update-workwear.dto';
@@ -8,6 +21,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '../auth/user-role.enum';
 import { WorkwearService } from './workwear.service';
 import { StorageService } from '../storage/storage.service';
+import { ListWorkwearSearchDto } from './dto/list-workwear-search.dto';
 
 @Controller('workwear')
 export class WorkwearController {
@@ -17,8 +31,8 @@ export class WorkwearController {
   ) {}
 
   @Get('get-all')
-  async getAll() {
-    return this.workwearService.findAll();
+  async getAll(@Query() query: ListWorkwearSearchDto) {
+    return this.workwearService.findAll(query);
   }
 
   @Get('get-one/:id')
