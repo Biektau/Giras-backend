@@ -15,7 +15,6 @@ export class WorkwearRepository {
     return this.repo.find({ order: { order: 'ASC' } });
   }
 
-  /** Поиск только по полям, которые имеет смысл вводить пользователю (без id, дат, order, url, сырой цены и т.д.). */
   findAllSearch(q: string): Promise<Workwear[]> {
     const term = `%${q.trim()}%`;
     return this.repo
