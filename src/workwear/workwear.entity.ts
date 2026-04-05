@@ -2,6 +2,7 @@ import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateCol
 import { WorkwearSize } from './enums/size.enum';
 import { WorkwearSeason } from './enums/season.enum';
 import { WorkwearItemSet } from './enums/set.enum';
+import { WorkwearCategory } from './enums/category.enum';
 
 @Entity()
 export class Workwear {
@@ -13,6 +14,9 @@ export class Workwear {
 
   @Column({ length: 500, nullable: true })
   description?: string;
+
+  @Column({ type: 'enum', enum: WorkwearCategory })
+  category: WorkwearCategory;
 
   @Column({ type: 'enum', enum: WorkwearSize, array: true })
   size: WorkwearSize[];

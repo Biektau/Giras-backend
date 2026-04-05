@@ -2,6 +2,7 @@ import { IsArray, IsBoolean, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString,
 import { WorkwearSize } from '../enums/size.enum';
 import { WorkwearSeason } from '../enums/season.enum';
 import { WorkwearItemSet } from '../enums/set.enum';
+import { WorkwearCategory } from '../enums/category.enum';
 import { Transform, Type } from 'class-transformer';
 
 export class CreateWorkwearDto {
@@ -13,6 +14,10 @@ export class CreateWorkwearDto {
   @IsOptional()
   @IsString({ message: 'Описание должно быть строкой' })
   description: string;
+
+  @IsNotEmpty({ message: 'Категория обязательна для заполнения' })
+  @IsEnum(WorkwearCategory, { message: `Категория должна быть одной из: ${Object.values(WorkwearCategory).join(', ')}` })
+  category: WorkwearCategory;
 
   @Transform(({ value }) => Array.isArray(value) ? value : [value])
   @IsNotEmpty({ message: 'Размер обязателен для заполнения' })

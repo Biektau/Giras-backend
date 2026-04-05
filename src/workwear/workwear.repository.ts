@@ -28,7 +28,8 @@ export class WorkwearRepository {
           w.material ILIKE :term OR
           CAST(w.season AS text) ILIKE :term OR
           CAST(w.set AS text) ILIKE :term OR
-          CAST(w.size AS text) ILIKE :term
+          CAST(w.size AS text) ILIKE :term OR
+          CAST(w.category AS text) ILIKE :term
         )`,
         { term },
       )
